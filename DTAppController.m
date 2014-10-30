@@ -184,9 +184,9 @@ OSStatus DTHotKeyHandler(EventHandlerCallRef nextHandler,EventRef theEvent, void
 	// Get AXPosition of the main window
 	CFTypeRef axPosition = NULL;
 	axErr = AXUIElementCopyAttributeValue(axWindow, kAXPositionAttribute, &axPosition);
-	CFBridgingRelease(axPosition);
 	if((axErr != kAXErrorSuccess) || !axPosition) {
 		NSLog(@"Couldn't get AXPosition: %d", axErr);
+        CFBridgingRelease(axPosition);
 		return NSZeroRect;
 	}
 	
@@ -194,15 +194,17 @@ OSStatus DTHotKeyHandler(EventHandlerCallRef nextHandler,EventRef theEvent, void
 	CGPoint realAXPosition;
 	if(!AXValueGetValue(axPosition, kAXValueCGPointType, &realAXPosition)) {
 		NSLog(@"Couldn't extract CGPoint from AXPosition");
+        CFBridgingRelease(axPosition);
 		return NSZeroRect;
 	}
+    CFBridgingRelease(axPosition);
 	
 	// Get AXSize
 	CFTypeRef axSize = NULL;
 	axErr = AXUIElementCopyAttributeValue(axWindow, kAXSizeAttribute, &axSize);
-	CFBridgingRelease(axSize);
 	if((axErr != kAXErrorSuccess) || !axSize) {
 		NSLog(@"Couldn't get AXSize: %d", axErr);
+        CFBridgingRelease(axSize);
 		return NSZeroRect;
 	}
 	
@@ -210,8 +212,10 @@ OSStatus DTHotKeyHandler(EventHandlerCallRef nextHandler,EventRef theEvent, void
 	CGSize realAXSize;
 	if(!AXValueGetValue(axSize, kAXValueCGSizeType, &realAXSize)) {
 		NSLog(@"Couldn't extract CGSize from AXSize");
+        CFBridgingRelease(axSize);
 		return NSZeroRect;
 	}
+    CFBridgingRelease(axSize);
 	
 	NSRect windowBounds;
 	windowBounds.origin.x = realAXPosition.x;
@@ -225,9 +229,10 @@ OSStatus DTHotKeyHandler(EventHandlerCallRef nextHandler,EventRef theEvent, void
 	CFTypeRef axURL = NULL;
 	
 	AXError axErr = AXUIElementCopyAttributeValue(uiElement, kAXURLAttribute, &axURL);
-	CFBridgingRelease(axURL);
-	if((axErr != kAXErrorSuccess) || !axURL)
+    if((axErr != kAXErrorSuccess) || !axURL) {
+        CFBridgingRelease(axURL);
 		return nil;
+    }
 	
 	// OK, we have some kind of AXURL attribute, but that could either be a string or a URL
 	
@@ -244,6 +249,7 @@ OSStatus DTHotKeyHandler(EventHandlerCallRef nextHandler,EventRef theEvent, void
 		else
 			return nil;
 	}
+    CFBridgingRelease(axURL);
 	
 	// Unknown type...
 	return nil;
@@ -264,22 +270,23 @@ OSStatus DTHotKeyHandler(EventHandlerCallRef nextHandler,EventRef theEvent, void
 	// Follow to main window
 	CFTypeRef mainWindow = NULL;
 	axErr = AXUIElementCopyAttributeValue(focusedApplication, kAXMainWindowAttribute, &mainWindow);
-	CFBridgingRelease(mainWindow);
 	if((axErr != kAXErrorSuccess) || !mainWindow) {
 #ifdef DEVBUILD
 		NSLog(@"Couldn't get main window: %d", axErr);
 #endif
+        CFBridgingRelease(mainWindow);
 		goto failedAXDocument;
 	}
 	
 	// Get the window's AXDocument URL string
 	CFTypeRef axDocumentURLString = NULL;
 	axErr = AXUIElementCopyAttributeValue(mainWindow, kAXDocumentAttribute, &axDocumentURLString);
-	CFBridgingRelease(axDocumentURLString);
 	if((axErr != kAXErrorSuccess) || !axDocumentURLString) {
 #ifdef DEVBUILD
 		NSLog(@"Couldn't get AXDocument: %d", axErr);
 #endif
+        CFBridgingRelease(axDocumentURLString);
+        CFBridgingRelease(mainWindow);
 		goto failedAXDocument;
 	}
 	
@@ -290,6 +297,8 @@ OSStatus DTHotKeyHandler(EventHandlerCallRef nextHandler,EventRef theEvent, void
 		*selectionURLStrings = @[(__bridge NSString*)axDocumentURLString];
 	if(windowFrame)
 		*windowFrame = [self windowFrameOfAXWindow:mainWindow];
+    CFBridgingRelease(axDocumentURLString);
+    CFBridgingRelease(mainWindow);
 	return YES;
 	
 	
@@ -300,21 +309,20 @@ failedAXDocument:	;
 	// Find focused UI element
 	CFTypeRef focusedUIElement = NULL;
 	axErr = AXUIElementCopyAttributeValue(focusedApplication, kAXFocusedUIElementAttribute, &focusedUIElement);
-	CFBridgingRelease(focusedUIElement);
 	if((axErr != kAXErrorSuccess) || !focusedUIElement) {
 #ifdef DEVBUILD
 		NSLog(@"Couldn't get AXFocusedUIElement");
-#endif
+#endif	
+        CFBridgingRelease(focusedUIElement);
 		return NO;
 	}
 	
 	// Does the focused UI element have any selected children or selected rows? Great for file views.
 	CFTypeRef focusedSelectedChildren = NULL;
 	axErr = AXUIElementCopyAttributeValue(focusedUIElement, kAXSelectedChildrenAttribute, &focusedSelectedChildren);
-	CFBridgingRelease(focusedSelectedChildren);
 	if((axErr != kAXErrorSuccess) || !focusedSelectedChildren || !CFArrayGetCount(focusedSelectedChildren)) {
-		axErr = AXUIElementCopyAttributeValue(focusedUIElement, kAXSelectedRowsAttribute, &focusedSelectedChildren);
-		CFBridgingRelease(focusedSelectedChildren);
+        CFBridgingRelease(focusedSelectedChildren);
+        axErr = AXUIElementCopyAttributeValue(focusedUIElement, kAXSelectedRowsAttribute, &focusedSelectedChildren);
 	}
 	if((axErr == kAXErrorSuccess) && focusedSelectedChildren) {
 		// If it *worked*, we see if we can extract URLs from these selected children
@@ -325,39 +333,46 @@ failedAXDocument:	;
 			if(selectedChildURLString)
 				[tmpSelectionURLs addObject:selectedChildURLString];
 		}
-		
+        
 		// If we have selection URLs now, grab the window the focused UI element belongs to
 		if([tmpSelectionURLs count]) {
 			CFTypeRef focusWindow = NULL;
 			axErr = AXUIElementCopyAttributeValue(focusedUIElement, kAXWindowAttribute, &focusWindow);
-			CFBridgingRelease(focusWindow);
 			if((axErr == kAXErrorSuccess) && focusWindow) {
 				// We're good with this! Return the values.
 				if(selectionURLStrings)
 					*selectionURLStrings = tmpSelectionURLs;
 				if(windowFrame)
-					*windowFrame = [self windowFrameOfAXWindow:focusWindow];
+                    *windowFrame = [self windowFrameOfAXWindow:focusWindow];
+                CFBridgingRelease(focusedSelectedChildren);
+                CFBridgingRelease(focusedUIElement);
+                CFBridgingRelease(focusWindow);
 				return YES;
-			}
+            }
+            CFBridgingRelease(focusWindow);
 		}
-	}
+    }
+    CFBridgingRelease(focusedSelectedChildren);
 	
 	// Does the focused UI element have an AXURL of its own?
 	NSString* focusedUIElementURLString = [self fileAXURLStringOfAXUIElement:focusedUIElement];
 	if(focusedUIElementURLString) {
 		CFTypeRef focusWindow = NULL;
 		axErr = AXUIElementCopyAttributeValue(focusedUIElement, kAXWindowAttribute, &focusWindow);
-		CFBridgingRelease(focusWindow);
 		if((axErr == kAXErrorSuccess) && focusWindow) {
 			// We're good with this! Return the values.
 			if(selectionURLStrings)
 				*selectionURLStrings = @[focusedUIElementURLString];
 			if(windowFrame)
 				*windowFrame = [self windowFrameOfAXWindow:focusWindow];
+            CFBridgingRelease(focusedUIElement);
+            CFBridgingRelease(focusWindow);
 			return YES;
 		}
+        CFBridgingRelease(focusWindow);
 	}
-    
+    CFBridgingRelease(focusedUIElement);
+   
     return NO;
 }
 
@@ -496,7 +511,6 @@ failedAXDocument:	;
 			NSLog(@"Couldn't get systemElement");
 			goto done;
 		}
-		CFBridgingRelease(systemElement);
 		
 		// Follow to focused application
 		CFTypeRef focusedApplication = NULL;
@@ -507,9 +521,10 @@ failedAXDocument:	;
 			NSLog(@"Couldn't get focused application: %d", axErr);
 			goto done;
 		}
-		CFBridgingRelease(focusedApplication);
 		
-		[self findWindowURL:&frontWindowURL selectionURLs:&selectionURLStrings windowFrame:&frontWindowBounds ofAXApplication:focusedApplication];
+        [self findWindowURL:&frontWindowURL selectionURLs:&selectionURLStrings windowFrame:&frontWindowBounds ofAXApplication:focusedApplication];
+        CFBridgingRelease(systemElement);
+        CFBridgingRelease(focusedApplication);
 	}
 	
 	// Numbers returned by AS are funky; adjust to NSWindow coordinates
