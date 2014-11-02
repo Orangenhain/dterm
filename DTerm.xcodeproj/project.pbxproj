@@ -200,6 +200,7 @@
 		3B3E1FB0190C10C500B31D3E /* SRValidator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SRValidator.h; sourceTree = "<group>"; };
 		3B3E1FB1190C10C500B31D3E /* SRValidator.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = SRValidator.m; sourceTree = "<group>"; };
 		3B6316B5190D51E100D62E4E /* XCTest.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = XCTest.framework; path = Library/Frameworks/XCTest.framework; sourceTree = DEVELOPER_DIR; };
+		75B0EC781A022E5900C023D1 /* iTerm2Nightly.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = iTerm2Nightly.h; sourceTree = "<group>"; };
 		8D1107310486CEB800E47090 /* Info.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		8D1107320486CEB800E47090 /* DTerm.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = DTerm.app; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
@@ -283,6 +284,7 @@
 				2529F8E90CF7575000CDF456 /* Terminal.h */,
 				252FA10D1141A4D00043EA6C /* iTerm.h */,
 				25FA394212E5E47100DE744A /* iTerm2.h */,
+				75B0EC781A022E5900C023D1 /* iTerm2Nightly.h */,
 			);
 			path = ScriptingBridge;
 			sourceTree = SOURCE_ROOT;
