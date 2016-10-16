@@ -28,7 +28,7 @@ typedef enum {
 // The application‘s top-level scripting object.
 @interface TerminalApplication : SBApplication
 
-- (SBElementArray *) windows;
+- (SBElementArray<TerminalWindow *> *) windows;
 
 @property (copy, readonly) NSString *name;  // The name of the application.
 @property (readonly) BOOL frontmost;  // Is this the frontmost (active) application?
@@ -44,7 +44,7 @@ typedef enum {
 // A window.
 @interface TerminalWindow : SBObject
 
-- (SBElementArray *) tabs;
+- (SBElementArray<TerminalTab *> *) tabs;
 
 @property (copy, readonly) NSString *name;  // The full title of the window.
 - (NSInteger) id;  // The unique identifier of the window.
