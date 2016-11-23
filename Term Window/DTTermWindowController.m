@@ -329,8 +329,17 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
 		return;
 	
 	if(!self.command || !(self.command).length)
-		return;
-	
+        return;
+    
+    BOOL isDirectory = NO;
+    BOOL workingDirExists = [[NSFileManager defaultManager] fileExistsAtPath:self.workingDirectory isDirectory:&isDirectory];
+    if (!(workingDirExists && isDirectory)) {
+        NSString *msg = [NSString stringWithFormat:@"Invalid working directory:\n%@", self.workingDirectory];
+        NSAlert *alert = [NSAlert alertWithError:[NSError errorWithDomain:@"DTermErrorDomain" code:1 userInfo:@{ NSLocalizedDescriptionKey: msg }]];
+        [alert beginSheetModalForWindow:(NSWindow * _Nonnull)self.window completionHandler:nil];
+        return;
+    }
+    
     DTRunManager* runManager = [[DTRunManager alloc] initWithWD:self.workingDirectory
                                                       selection:self.selectedURLs
                                                         command:self.command];
