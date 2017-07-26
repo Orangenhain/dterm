@@ -421,7 +421,7 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
 		if(frontWindow) {
 			if(!terminalAlreadyRunning) {
 				tab = [frontWindow tabs].firstObject;
-			} else if(/*terminalUsesTabs*/false) {
+			} else if(/*terminalUsesTabs*/ (false)) {
 				tab = [[[terminal classForScriptingClass:@"tab"] alloc] init];
 				[[frontWindow tabs] addObject:tab];
 			}
