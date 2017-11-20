@@ -4,6 +4,15 @@
 
 #import "DTTermWindowController.h"
 
+@interface TextStorageCacheEntry : NSObject
+@property NSUInteger contentLength;
+@property CGFloat computedHeight;
+@property NSPoint scrollPosition;
+@property NSArray<NSValue*> *selectedRanges;
+@end
+@implementation TextStorageCacheEntry
+@end
+
 @interface DTResultsTextView ()
 {
     BOOL validResultsStorage;
@@ -11,6 +20,10 @@
     
     BOOL disableAntialiasing;
 }
+
+// TODO [?] should be cleared on font change
+@property NSMapTable<NSTextStorage*, TextStorageCacheEntry*> *cache;
+
 @end
 
 @implementation DTResultsTextView
@@ -29,6 +42,8 @@
 	  toObject:[NSUserDefaultsController sharedUserDefaultsController]
    withKeyPath:@"values.DTDisableAntialiasing"
 	   options:@{NSNullPlaceholderBindingOption: @NO}];
+    
+    self.cache = [NSMapTable weakToStrongObjectsMapTable];
 }
 
 - (void)setDisableAntialiasing:(BOOL)b {
@@ -71,8 +86,10 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
 	
 	
 	validResultsStorage = (newResults != nil);
+    [self cacheAndDropTextSelection];
 	if(newResults) {
 		[self.layoutManager replaceTextStorage:newResults];
+        [self restoreTextSelection];
 		[[NSNotificationCenter defaultCenter] addObserver:self
 												 selector:@selector(dtTextChanged:)
 													 name:NSTextStorageDidProcessEditingNotification
@@ -116,6 +133,19 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
 	}
 }
 
+- (TextStorageCacheEntry *)currentCacheEntryCreateOnAccess:(BOOL)createIfNotExists
+{
+    NSTextStorage* textStorage = self.layoutManager.textStorage;
+    TextStorageCacheEntry *cached = [self.cache objectForKey:textStorage];
+
+    if (!cached && createIfNotExists) {
+        cached = [TextStorageCacheEntry new];
+        [self.cache setObject:cached forKey:textStorage];
+    }
+
+    return cached;
+}
+
 // From http://www.cocoadev.com/index.pl?NSTextViewSizeToFit
 - (NSSize)minSizeForContent {
 	NSLayoutManager *layoutManager = self.layoutManager;
@@ -125,12 +155,28 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
 	NSRect usedRect = [layoutManager usedRectForTextContainer:textContainer];
 	NSSize inset = self.textContainerInset;
 	
-	return NSInsetRect(usedRect, -inset.width * 2, -inset.height * 2).size;
+    NSSize minSize = NSInsetRect(usedRect, -inset.width * 2, -inset.height * 2).size;
+    TextStorageCacheEntry *cached = [self currentCacheEntryCreateOnAccess:YES];
+    cached.computedHeight = minSize.height;
+    cached.contentLength = layoutManager.textStorage.length;
+    
+	return minSize;
+}
+
+- (CGFloat) targetHeightForContent
+{
+    NSTextStorage* textStorage = self.layoutManager.textStorage;
+    TextStorageCacheEntry *cached = [self currentCacheEntryCreateOnAccess:NO];
+    if (cached && (textStorage.length == cached.contentLength)) {
+        return cached.computedHeight;
+    }
+    
+    return [self minSizeForContent].height;
 }
 
 - (CGFloat)desiredHeightChange {
 	NSSize currentSize = self.enclosingScrollView.contentSize;
-	NSSize newSize = NSMakeSize(currentSize.width, [self minSizeForContent].height);
+	NSSize newSize = NSMakeSize(currentSize.width, [self targetHeightForContent]);
 	
 	return newSize.height - currentSize.height;
 }
@@ -145,5 +191,21 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
 	[self dtSizeToFit];
 }
 
+- (void) cacheAndDropTextSelection
+{
+    TextStorageCacheEntry *cached = [self currentCacheEntryCreateOnAccess:YES];
+
+    cached.selectedRanges = self.selectedRanges;
+    [self setSelectedRange:NSMakeRange(0, 0)];
+}
+
+- (void) restoreTextSelection
+{
+    NSArray *cachedSelectedRanges = [self currentCacheEntryCreateOnAccess:NO].selectedRanges;
+
+    if (cachedSelectedRanges) {
+        [self setSelectedRanges:cachedSelectedRanges];
+    }
+}
 
 @end
