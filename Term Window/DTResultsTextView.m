@@ -8,9 +8,14 @@
 @property NSUInteger contentLength;
 @property CGFloat computedHeight;
 @property NSPoint scrollPosition;
+@property BOOL wasScrolledToBottom;
 @property NSArray<NSValue*> *selectedRanges;
 @end
 @implementation TextStorageCacheEntry
+@end
+
+@interface NSScrollView (DTScrollingFun)
+@property (readonly) BOOL isAtBottom;
 @end
 
 @interface DTResultsTextView ()
@@ -23,6 +28,8 @@
 
 // TODO [?] should be cleared on font change
 @property NSMapTable<NSTextStorage*, TextStorageCacheEntry*> *cache;
+
+@property BOOL isResizingWindow;
 
 @end
 
@@ -43,7 +50,11 @@
    withKeyPath:@"values.DTDisableAntialiasing"
 	   options:@{NSNullPlaceholderBindingOption: @NO}];
     
-    self.cache = [NSMapTable weakToStrongObjectsMapTable];
+    [self startObservingScrolling];
+    
+    self.cache = [[NSMapTable alloc] initWithKeyOptions:NSMapTableWeakMemory | NSMapTableObjectPointerPersonality  // NSTextStorage changes hash & isEqual when the content string changes
+                                           valueOptions:NSMapTableStrongMemory
+                                               capacity:0];
 }
 
 - (void)setDisableAntialiasing:(BOOL)b {
@@ -87,6 +98,7 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
 	
 	validResultsStorage = (newResults != nil);
     [self cacheAndDropTextSelection];
+    [self cacheScrollPosition:NO];
 	if(newResults) {
 		[self.layoutManager replaceTextStorage:newResults];
         [self restoreTextSelection];
@@ -105,20 +117,6 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
     UnusedParameter(ntf);
     
 //	NSLog(@"dtTextChanged called: %@, %@", ntf, [self string]);
-
-//	-- Commenting this stuff out because we don't have a good way to tell here if 
-//	-- we were already scrolled at the bottom, and we don't want to force scroll
-//	-- to the bottom otherwise
-//	NSPoint newScrollOrigin;
-//	
-//	NSScrollView* scrollview = [self enclosingScrollView];
-//	if ([[scrollview documentView] isFlipped]) {
-//		newScrollOrigin=NSMakePoint(0.0,NSMaxY([[scrollview documentView] frame])
-//									-NSHeight([[scrollview contentView] bounds]));
-//	} else {
-//		newScrollOrigin=NSMakePoint(0.0,0.0);
-//	}
-//	[[scrollview documentView] scrollPoint:newScrollOrigin];
 	
 	// There's a bunch of spurious empty string sets done by bindings :-/
 	// We don't want to shrink-grow-shrink-grow during a continual grow
@@ -139,7 +137,9 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
     TextStorageCacheEntry *cached = [self.cache objectForKey:textStorage];
 
     if (!cached && createIfNotExists) {
+//        NSLog(@"creating for text storage: %p", textStorage);
         cached = [TextStorageCacheEntry new];
+        cached.wasScrolledToBottom = YES;
         [self.cache setObject:cached forKey:textStorage];
     }
 
@@ -183,8 +183,17 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
 
 - (void)dtSizeToFit {
 	CGFloat dHeight = [self desiredHeightChange];
-	if(dHeight != 0.0)
-		[(DTTermWindowController*)self.window.windowController requestWindowHeightChange:dHeight];
+    if(dHeight != 0.0) {
+        self.isResizingWindow = YES;
+        self.enclosingScrollView.hasVerticalScroller = NO;
+        [(DTTermWindowController*)self.window.windowController requestWindowHeightChange:dHeight onCompletion:^{
+            self.enclosingScrollView.hasVerticalScroller = YES;
+            self.isResizingWindow = NO;
+        }];
+//        NSLog(@"Sizing to height: %f", dHeight);
+
+        [self restoreScrollPosition];
+    }
 }
 
 - (void)viewDidMoveToWindow {
@@ -208,4 +217,77 @@ extern void CGContextSetFontSmoothingStyle(CGContextRef, int);
     }
 }
 
+// MARK: - Scrolling
+
+- (void) startObservingScrolling
+{
+    NSScrollView *sv = self.enclosingScrollView;
+    sv.postsFrameChangedNotifications = YES;
+    
+    NSNotificationCenter *nc = [NSNotificationCenter defaultCenter];
+    [nc addObserver:self selector:@selector(scrollViewDidChangedFrame:) name:NSViewFrameDidChangeNotification object:sv];
+    [nc addObserver:self selector:@selector(scrollViewDidLiveScroll:) name:NSScrollViewDidLiveScrollNotification object:sv];
+}
+
+- (void)scrollViewDidChangedFrame:(NSNotification * __unused)notification
+{
+    if (self.window.inLiveResize && !self.isResizingWindow) {
+        [self cacheScrollPosition:NO];
+    }
+}
+
+- (void)scrollViewDidLiveScroll:(NSNotification * __unused)notification
+{
+    [self cacheScrollPosition:YES];
+}
+
+- (void) cacheScrollPosition:(BOOL)updateIsAtBottom
+{
+    TextStorageCacheEntry *cached = [self currentCacheEntryCreateOnAccess:YES];
+    
+    cached.scrollPosition = self.enclosingScrollView.contentView.documentVisibleRect.origin;
+    if (updateIsAtBottom) {
+        cached.wasScrolledToBottom = self.enclosingScrollView.isAtBottom;
+    }
+//    NSLog(@"caching scroll position: %@ - bottom: %@ for %@", NSStringFromPoint(cached.scrollPosition), cached.wasScrolledToBottom ? @"YES" : @"NO", cached);
+}
+
+- (void) restoreScrollPosition
+{
+    TextStorageCacheEntry *cached = [self currentCacheEntryCreateOnAccess:NO];
+    if (!cached) {
+        return;
+    }
+
+    if (cached.wasScrolledToBottom) {
+//        NSLog(@"scroll to bottom for %@", cached);
+        [self scrollToEndOfDocument:nil];
+    } else {
+//        NSLog(@"restoring scroll position: %@ from %@", NSStringFromPoint(cached.scrollPosition), cached);
+        [self.enclosingScrollView.contentView scrollToPoint:cached.scrollPosition];
+    }
+}
+
 @end
+
+@implementation NSScrollView (DTScrollingFun)
+@dynamic isAtBottom;
+- (BOOL)isAtBottom
+{
+    CGFloat fuzzyFactor = 5. + DBL_EPSILON; // so the user doesn't have to scroll *all* the way down
+    
+    NSRect visibleRect = self.contentView.documentVisibleRect;
+    CGFloat visibleHeight = CGRectGetHeight(visibleRect);
+    CGFloat scrollMaxY = CGRectGetMaxY(visibleRect);
+    CGFloat documentHeight = CGRectGetHeight(self.documentView.frame);
+    
+    //    NSLog(@"visibleHeight = %f - documentHeight: %f - scrollMaxY: %f", visibleHeight, documentHeight, scrollMaxY);
+    
+    // important when the scroll view is larger than the actual content & user is scrolling down - that makes scrollMaxY smaller than the document/visible height, even though everything fits on screen
+    BOOL allContentFitsOnScreen = fabs(visibleHeight - documentHeight) < DBL_EPSILON;
+    
+    return allContentFitsOnScreen || (scrollMaxY >= (documentHeight - fuzzyFactor));
+}
+
+@end
+

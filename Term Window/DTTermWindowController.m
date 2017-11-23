@@ -463,7 +463,10 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
 	[selection makeObjectsPerformSelector:NSSelectorFromString(@"cancel:") withObject:sender];
 }
 
-- (void)requestWindowHeightChange:(CGFloat)dHeight {
+- (void)requestWindowHeightChange:(CGFloat)dHeight onCompletion:(void (^)(void))completion
+{
+    NSParameterAssert(completion);
+    
 	NSWindow* window = self.window;
 	
 	// Calculate new frame, ignoring window constraint
@@ -483,6 +486,10 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
 	[window setFrame:windowFrame
 			 display:YES
 			 animate:[[NSUserDefaults standardUserDefaults] boolForKey:DTResizeAnimation]];
+    
+    dispatch_after(dispatch_time(DISPATCH_TIME_NOW, (int64_t)([self.window animationResizeTime:windowFrame] * NSEC_PER_SEC)), dispatch_get_main_queue(), ^{
+        completion();
+    });
 }
 
 - (NSString *)_actualPathForString:(NSString *)completion
