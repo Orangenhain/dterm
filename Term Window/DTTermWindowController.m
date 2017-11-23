@@ -482,7 +482,7 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
 	
 	[window setFrame:windowFrame
 			 display:YES
-			 animate:YES];
+			 animate:[[NSUserDefaults standardUserDefaults] boolForKey:DTResizeAnimation]];
 }
 
 - (NSString *)_actualPathForString:(NSString *)completion

@@ -18,6 +18,7 @@ NSString* const DTResultsToKeepKey = @"DTResultsToKeep";
 NSString* const DTTextColorKey = @"DTTextColor";
 NSString* const DTFontNameKey = @"DTFontName";
 NSString* const DTFontSizeKey = @"DTFontSize";
+NSString* const DTResizeAnimation = @"DTResizeAnimation";
 
 static NSString* const DTHotkeyAlsoDeactivatesKey = @"DTHotkeyAlsoDeactivates";
 static NSString* const DTShowDockIconKey = @"DTShowDockIcon";
@@ -55,13 +56,16 @@ static NSString* const DTDisableAntialiasingKey = @"DTDisableAntialiasing";
 	setenv("TERM_PROGRAM", "DTerm", 1);
 	setenv("TERM_PROGRAM_VERSION", [[[NSBundle mainBundle] objectForInfoDictionaryKey:@"CFBundleVersion"] cStringUsingEncoding:NSASCIIStringEncoding], 1);
 	
-	NSDictionary* defaultsDict = @{DTResultsToKeepKey: @"5",
-								  DTHotkeyAlsoDeactivatesKey: @NO,
-								  DTShowDockIconKey: @YES,
-								  DTTextColorKey: [NSKeyedArchiver archivedDataWithRootObject:[[NSColor whiteColor] colorWithAlphaComponent:0.9]],
-								  DTFontNameKey: @"Monaco",
-								  DTFontSizeKey: @10.0f,
-								  DTDisableAntialiasingKey: @NO};
+	NSDictionary* defaultsDict = @{
+                                   DTResultsToKeepKey: @"5",
+                                   DTHotkeyAlsoDeactivatesKey: @NO,
+                                   DTShowDockIconKey: @YES,
+                                   DTTextColorKey: [NSKeyedArchiver archivedDataWithRootObject:[[NSColor whiteColor] colorWithAlphaComponent:0.9]],
+                                   DTFontNameKey: @"Monaco",
+                                   DTFontSizeKey: @10.0f,
+                                   DTDisableAntialiasingKey: @NO,
+                                   DTResizeAnimation: @YES,
+                                   };
 	[[NSUserDefaults standardUserDefaults] registerDefaults:defaultsDict];
 	
 	// Register for URL handling
