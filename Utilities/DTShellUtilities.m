@@ -17,8 +17,12 @@ NSString* escapedPath(NSString* path) {
 	for(NSUInteger i=0; i<path.length; i++) {
 		unichar ch = [path characterAtIndex:i];
 		
-		if([charsToEscape characterIsMember:ch])
-			[escapedPath appendString:@"\\"];
+        if([charsToEscape characterIsMember:ch]) {
+            BOOL tildeHack = (i == 0) && (ch == '~') && [path hasPrefix:@"~"];
+            if (!tildeHack) {
+                [escapedPath appendString:@"\\"];
+            }
+        }
 		[escapedPath appendFormat:@"%C", ch];
 	}
 	
@@ -38,10 +42,12 @@ NSString* unescapedPath(NSString* path) {
 		unichar ch = [path characterAtIndex:i];
 		
 		if((ch != '\\') && [charsToEscape characterIsMember:ch] && !lastCharWasBackslash) {
-//			NSLog(@"%C at %d was the offender, prev char %C", ch, i, [path characterAtIndex:i-1]);
-			return nil;
+            BOOL tildeHack = (i == 0) && (ch == '~') && [path hasPrefix:@"~"];
+            if (!tildeHack) {
+//                NSLog(@"%C at %d was the offender, prev char %C", ch, i, [path characterAtIndex:i-1]);
+                return nil;
+            }
 		}
-			
 
 		if(lastCharWasBackslash) {
 			[unescapedPath appendFormat:@"%C", ch];

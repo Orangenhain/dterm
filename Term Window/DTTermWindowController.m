@@ -485,6 +485,17 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
 			 animate:YES];
 }
 
+- (NSString *)_actualPathForString:(NSString *)completion
+{
+    if ([completion hasPrefix:@"/"]) {
+        return completion;
+    } else if ([completion hasPrefix:@"~"]) {
+        return [completion stringByExpandingTildeInPath];
+    } else {
+        return [self.workingDirectory stringByAppendingPathComponent:completion];
+    }
+}
+
 - (NSArray*)completionsForPartialWord:(NSString*)partialWord
 							isCommand:(BOOL)isCommand
 				  indexOfSelectedItem:(NSInteger*)index
@@ -500,7 +511,7 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
 															([[DTRunManager shellPath].lastPathComponent isEqualToString:@"bash"] ? @"a" : @""),
 															(isCommand ? @"bc" : @""),
 															(allowFiles ? @"df" : @""),
-															partialWord]];
+															[NSString stringWithFormat:@"'%@'", partialWord]]];
 	
 	// Attach pipe to task's standard output
 	NSPipe* newPipe = [NSPipe pipe];
@@ -531,7 +542,7 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
 	NSMutableArray* completions = [NSMutableArray arrayWithCapacity:completionsSet.count];
 	NSFileManager* fileManager = [NSFileManager defaultManager];
 	for(__strong NSString* completion in completionsSet) {
-		NSString* actualPath = ([completion hasPrefix:@"/"] ? completion : [workingDirectory stringByAppendingPathComponent:completion]);
+        NSString* actualPath = [self _actualPathForString:completion];
 		BOOL isDirectory = NO;
 		if([fileManager fileExistsAtPath:actualPath isDirectory:&isDirectory] && isDirectory)
 			completion = [completion stringByAppendingString:@"/"];
