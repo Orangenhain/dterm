@@ -5,7 +5,7 @@
 static NSCharacterSet* charactersToEscape() {
 	static NSCharacterSet* charactersToEscape = nil;
 	if(!charactersToEscape) {
-		charactersToEscape = [NSCharacterSet characterSetWithCharactersInString:@" ()[]{}<>|!?$&~^*`';\\\t\"\x1b"];
+        charactersToEscape = [NSCharacterSet characterSetWithCharactersInString:@" ()[]{}<>|!?$&~^*`';#\\\t\"\x1b"];
 	}
 	return charactersToEscape;
 }
