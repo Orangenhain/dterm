@@ -504,6 +504,10 @@ static void * DTResultsStorageContext = &DTResultsStorageContext;
     
 	BOOL allowFiles = (!isCommand || [partialWord hasPrefix:@"/"] || [partialWord hasPrefix:@"./"] || [partialWord hasPrefix:@"../"]);
 	
+    if (allowFiles && [partialWord isEqualToString:@"~"]) {
+        partialWord = @"~/";
+    }
+    
 	NSTask* task = [[NSTask alloc] init];
 	task.currentDirectoryPath = self.workingDirectory;
 	task.launchPath = @"/bin/bash";
