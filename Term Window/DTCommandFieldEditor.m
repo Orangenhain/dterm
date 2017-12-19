@@ -105,13 +105,10 @@
                                                 options:(NSStringCompareOptions)(NSDiacriticInsensitiveSearch|NSWidthInsensitiveSearch)];
 		}
 		
-		// If there's a common prefix, we just go ahead and insert it in this case and cancel completion, to behave like bash.
-		// The user can trigger completion again if they want the different options.
+		// If there's a common prefix, we just go ahead and insert it, plus show the completions
 		if(prefix.length && ![prefix isEqualToString:partialWord]) {
 			//NSLog(@"found common prefix: %@", prefix);
 			[self insertText:prefix replacementRange:self.rangeForUserCompletion];
-			
-			return nil;
 		}
 	}
 	@catch (NSException* e) {
