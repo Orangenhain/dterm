@@ -11,6 +11,7 @@ extern NSString* const DTResultsToKeepKey;
 extern NSString* const DTTextColorKey;
 extern NSString* const DTFontNameKey;
 extern NSString* const DTFontSizeKey;
+extern NSString* const DTResizeAnimation;
 
 extern NSString* const DTGlobalShortcutPreferenceKey;
 

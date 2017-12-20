@@ -17,7 +17,7 @@
 						 windowFrame:(NSRect)frame;
 - (void)deactivate;
 
-- (void)requestWindowHeightChange:(CGFloat)dHeight;
+- (void)requestWindowHeightChange:(CGFloat)dHeight onCompletion:(void (^)(void))completion;
 
 - (IBAction)insertSelection:(id)sender;
 - (IBAction)insertSelectionFullPaths:(id)sender;
